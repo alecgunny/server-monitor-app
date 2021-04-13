@@ -35,6 +35,8 @@ def stop_experiment():
 
     monitor.stop()
     monitor.join(1)
+    monitor.close()
+
     response = Response(
         monitor.output_file.getValue(),
         content_type="text/csv"
