@@ -1,6 +1,8 @@
 from io import StringIO
 
 from flask import Flask, Response, request
+from werkzeug.exceptions import HTTPException
+
 from stillwater.client import ThreadedMultiStreamInferenceClient
 from stillwater.client.monitor import ServerStatsMonitor
 
@@ -9,11 +11,21 @@ app = Flask(__name__)
 monitor = None
 
 
+class OngoingExperiment(HTTPException):
+    code = 505
+    description = "Experiment is ongoing"
+
+
+class NoExperiment(HTTPException):
+    code = 505
+    description = "No experiment running"
+
+
 @app.route("/start")
 def start_experiment():
     global monitor
     if monitor is not None:
-        return 400, "Experiment is ongoing"
+        raise OngoingExperiment
 
     url = request.args.get("url")
     model_name = request.args.get("model-name")
@@ -24,23 +36,24 @@ def start_experiment():
     )
     monitor = ServerStatsMonitor(client, StringIO())
     monitor.start()
-    return 200
+    return "Started monitoring"
 
 
 @app.route("/stop")
 def stop_experiment():
     global monitor
     if monitor is None:
-        return 400, "No experiment running"
+        raise NoExperiment
 
     monitor.stop()
     monitor.join(1)
     monitor.close()
 
     response = Response(
-        monitor.output_file.getValue(),
+        monitor.output_file.getvalue(),
         content_type="text/csv"
     )
+    monitor.output_file.close()
 
     monitor = None
     return response
