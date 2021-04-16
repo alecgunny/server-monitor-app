@@ -27,12 +27,12 @@ def start_experiment():
     if monitor is not None:
         raise OngoingExperiment
 
-    url = request.args.get("url")
+    ip = request.args.get("ip")
     model_name = request.args.get("model-name")
     model_version = request.args.get("model-version", "1")
 
     client = ThreadedMultiStreamInferenceClient(
-        url, model_name, model_version
+        ip + ":8001", model_name, model_version
     )
     monitor = ServerStatsMonitor(client, StringIO())
     monitor.start()
